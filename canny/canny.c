@@ -1,4 +1,4 @@
-/* Jonathan Dooley - January 20th 2024 */
+/* Jonathan Dooley - January 20th 2025 */
 
 #include <stdio.h>                  /*  Canny algorithm (based on marrh.c) */
 #include <math.h>
@@ -24,15 +24,16 @@ double final[PICSIZE][PICSIZE];
 int main(int argc, char **argv)
 {
     int     i, j, p, q, s, t, mr, centx, centy, area, boolean_moretodo;
-    double  xmaskval, ymaskval, xsum, ysum, sigma, maxival, minival, maxval, slope, cutOff, HI, LO;
+    int     HI, LO;
+    double  xmaskval, ymaskval, xsum, ysum, sigma, maxival, minival, maxval, slope, cutOff, percent;
     FILE    *fo1, *fo2, *fo3, *fp1, *fopen();
     char    *foobar;
 
     // Check for correct number of arguments
-    if (argc != 3)
+    if (argc != 4)
     {
         printf("Error! Incorrect number of arguments passed to the program.\n");
-        printf("Usage: ./canny <input>.pgm <sigma_value>\n");
+        printf("Usage: ./canny <input>.pgm <sigma_value> <percent>\n");
         return 1;
     }
 
@@ -45,6 +46,11 @@ int main(int argc, char **argv)
     argc--; argv++;
     foobar = *argv;
     sigma = atof(foobar);
+
+    // Scan in percent value
+    argc--; argv++;
+    foobar = *argv;
+    percent = atof(foobar);
 
     // Open two output files
     fo1 = fopen("mag_out.pgm", "wb");
@@ -232,23 +238,54 @@ int main(int argc, char **argv)
     {
         for (j = 0; j < PICSIZE; j++)
         {
-            (histogram[(int)magnitude[i][j]])++;
+            histogram[(int)(magnitude[i][j])]++;
         }
     }
 
-    cutOff = 0.1 * PICSIZE * PICSIZE;
+    cutOff = percent * PICSIZE * PICSIZE;
+    printf("%lf\n", percent);
+    printf("%d\n", PICSIZE);
+
+    printf("%lf\n", cutOff);
+
     area = 0;
-    for (i = PICSIZE - 1; i >= 0; i--)
+    for (i = PICSIZE; (i > 0) && (area <= cutOff); i--)
     {
         area += histogram[i];
-        if (area > cutOff)
-        {
-            break;
-        }
     }
 
+    // Calculate HI and LO values
     HI = i;
+    printf("%d\n", HI);
+
     LO = LOW_PERCENT * HI;
+
+    printf("%d\n", LO);
+
+    // Apply double threshold
+    for (i = 0; i < PICSIZE; i++)
+    {
+        for (j = 0; j < PICSIZE; j++)
+        {
+            // Check if considered an edge
+            if (peaks[i][j] == 255)
+            {
+                // Guaranteed an edge
+                if (magnitude[i][j] >= HI)
+                {
+                    peaks[i][j] = 0; 
+                    final[i][j] = 255;
+                }
+
+                // Guaranteed NOT an edge
+                else if (magnitude[i][j] < LO)
+                {
+                    peaks[i][j] = 0;
+                    final[i][j] = 0;
+                }
+            }
+        }
+    }
 
     // Apply double threshold and create final output
     for (i = 0; i < PICSIZE; i++)
